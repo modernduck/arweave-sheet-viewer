@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ARWEAVE SHEET VIEWER</title>
+    <script src="https://unpkg.com/arweave/bundles/web.bundle.js"></script>
+    <script lang="javascript" src="https://unpkg.com/xlsx@0.17.4/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/canvas-datagrid"></script>
+    <script src="./genRow.js"></script>
+    <script>
+        const arweave = Arweave.init({});
+        arweave.network.getInfo().then(console.log);
+        const getWorkbook = data => {
+            var arr = new Array();
+
+            for (var i = 0; i !== data.length; ++i) {
+                arr[i] = String.fromCharCode(data[i]);
+            }
+
+            var bstr = arr.join("");
+            return XLSX.read(bstr, { type: "binary" })
+        }
+        const getRowData = workbook => {
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            let rowData = [];
+
+            // start at the 2nd row - the first row are the headers
+            var rowIndex = 1;
+            console.log('ref', worksheet['!ref'])
+            // iterate over the worksheet pulling out the columns we're expecting
+            console.log(worksheet)
+            while (worksheet['A' + rowIndex]) {
+                var row = genRow(worksheet, rowIndex);
+                rowData.push(row);
+
+                rowIndex++;
+            }
+
+            // finally, set the imported rowData into the grid
+            return rowData
+        }
+        const init = async() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            console.log('init', urlParams.get('id'))
+            if(urlParams && urlParams.get('id')){
+                const data = await arweave.transactions.getData(urlParams.get('id'), {decode:true})
+                console.log(urlParams)
+                console.log(data)
+                console.log(getWorkbook(data))
+                var grid = canvasDatagrid();
+                document.body.innerHTML =""
+                document.body.appendChild(grid);
+                grid.data = getRowData(getWorkbook(data))
+            }
+            
+        }
+        init();
+        function submit(){
+            //e.preventDefault();
+            //console.log(document.getElementById('inputId'))
+            console.log('yo')
+            return false;
+        }
+        
+        const yo = () => {
+            const currentUrl = new URL(window.location.href)
+            currentUrl.searchParams.set('id', document.getElementById('inputId').value);
+            console.log(currentUrl.href)
+            window.location = currentUrl.href
+            return false;
+        }
+    </script>
+</head>
+<body>
+    <form id="submit-form" onsubmit="yo();return false">
+        <h2>Type public tx id of spreadsheet</h2>
+        <input id="inputId"></input>
+        <input type="submit" />
+    </form>
+</body>
+</html>
